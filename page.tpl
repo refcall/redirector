@@ -65,7 +65,7 @@
 <body>
   <div class="container">
     <div class="card">
-      <img class="image" src="{{ .Config.Logo }}" />
+      <img class="image" src="/logo" />
       <span class="text">{{ .Translation.Text }}</span>
       <div class="progress">
         <div class="progress-content"></div>

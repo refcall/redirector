@@ -3,9 +3,11 @@ package main
 import (
 	_ "embed"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -33,6 +35,11 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	logoPath, err := downloadLogo(c)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	tmpl, err := template.New("page").Parse(tmpl)
 	if err != nil {
 		panic(err)
@@ -41,6 +48,7 @@ func main() {
 	myHandler := MyHandler{
 		Template: tmpl,
 		Config:   c,
+		LogoPath: logoPath,
 	}
 
 	s := &http.Server{
@@ -56,6 +64,7 @@ type MyHandler struct {
 	http.Handler
 	Template *template.Template
 	Config   Config
+	LogoPath string
 }
 
 type Template struct {
@@ -63,7 +72,32 @@ type Template struct {
 	Translation Translation
 }
 
+func downloadLogo(c Config) (string, error) {
+	response, e := http.Get(c.Logo)
+	if e != nil {
+		return "", e
+	}
+	defer response.Body.Close()
+
+	file, err := os.CreateTemp("", "logo")
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, response.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return file.Name(), nil
+}
+
 func (m MyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/logo" {
+		http.ServeFile(w, r, m.LogoPath)
+		return
+	}
 	if r.URL.Path == "/redirect" {
 		ref := r.Header.Get("Referer")
 		log.Println("user redirect with referer", ref)
